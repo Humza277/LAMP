@@ -1,0 +1,4 @@
+- name: Add Ansible host
+  add_host:
+    name: LAMP Server
+    

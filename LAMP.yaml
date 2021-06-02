@@ -1,0 +1,8 @@
+---
+- hosts: webserver
+  vars_files:
+    - vars.yaml
+  roles:
+  - 02_Apache
+  - 03_MariaDB
+

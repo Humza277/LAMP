@@ -1,0 +1,7 @@
+---
+- hosts: localhost
+  vars_files:
+    - vars.yaml
+  roles:
+  - 01_AWS_VPC
+

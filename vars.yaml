@@ -1,0 +1,8 @@
+---
+# vars file for AWS
+
+aws:
+  access_key: 
+  secret_key: 
+
+

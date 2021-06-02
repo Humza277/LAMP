@@ -1,0 +1,155 @@
+---
+
+- name: Create the Amazon VPC 
+  amazon.aws.ec2_vpc_net:
+    aws_access_key: "{{ aws.access_key }}"
+    aws_secret_key: "{{ aws.secret_key }}"
+    state: present
+    name: Proj
+    cidr_block: 10.0.0.0/16
+    region: eu-west-1
+    validate_certs: yes 
+  register: aws
+
+# Create Public Subnets 
+
+- name: Create Public Subnet 1
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ aws.vpc.id }}"
+    cidr: 10.0.0.0/24
+    region: eu-west-1
+    az: eu-west-1a
+    tags: 
+      Name: Public_1
+  register: Public1
+
+- name: Create Public Subnet 2
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ aws.vpc.id }}"
+    cidr: 10.0.1.0/24
+    region: eu-west-1
+    az: eu-west-1b
+    tags: 
+      Name: Public_2
+  register: Public2
+
+- name: Create Public Subnet 3
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ aws.vpc.id }}"
+    cidr: 10.0.2.0/24
+    region: eu-west-1
+    az: eu-west-1c
+    tags: 
+      Name: Public_3
+  register: Public3
+
+# Create Private Subnets
+
+- name: Create Private Subnet 1 
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ aws.vpc.id }}"
+    cidr: 10.0.4.0/24
+    region: eu-west-1
+    az: eu-west-1a
+    tags: 
+      Name: Private_1
+  register: Private1
+
+- name: Create Private Subnet 2
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ aws.vpc.id }}"
+    cidr: 10.0.5.0/24
+    region: eu-west-1
+    az: eu-west-1b
+    tags: 
+      Name: Private_2
+  register: Private2
+
+- name: Create Private Subnet 3
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ aws.vpc.id }}"
+    cidr: 10.0.6.0/24
+    region: eu-west-1
+    az: eu-west-1c
+    tags: 
+      Name: Private_3
+  register: Private3
+
+# Create Internet Gateway 
+
+- name: Create Internet Gateway
+  ec2_vpc_igw:
+    vpc_id: "{{ aws.vpc.id }}"
+    region: eu-west-1
+    state: present
+    tags:
+      Name: Proj Internet Gateway
+  register: igw
+
+# Create Nat Gateway
+
+- name: Create Nat Gateway 
+  ec2_vpc_nat_gateway:
+    state: present
+    subnet_id: "{{ Public1.subnet.id }}"
+    region: eu-west-1
+    wait: true
+    tags:
+      Name: NAT Internet Gateway
+  register: nat
+
+# Create Public Route Table
+
+- name: Set up public subnet route table
+  ec2_vpc_route_table:
+    vpc_id: "{{ aws.vpc.id }}"
+    region: eu-west-1
+    tags:
+      Name: Public Route Table
+    subnets:
+      - "{{ Public1.subnet.id }}"
+      - "{{ Public2.subnet.id }}"
+      - "{{ Public3.subnet.id }}"
+    routes:
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ igw.gateway_id }}"
+  register: public_route_table
+
+# Create Private Route Table
+
+- name: Set up private subnet route table
+  ec2_vpc_route_table:
+    vpc_id: "{{ aws.vpc.id }}"
+    region: eu-west-1
+    tags:
+      Name: Private Route Table
+    subnets:
+      - "{{ Private1.subnet.id }}"
+      - "{{ Private2.subnet.id }}"
+      - "{{ Private3.subnet.id }}"
+    routes:
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ nat.nat_gateway_id }}"
+  register: private_route_table
+
+# Create Ec2 Instance
+
+- name: Set up ec2
+  amazon.aws.ec2:
+    key_name: proj_key
+    instance_type: t2.micro
+    image: ami-0943382e114f188e8
+    wait: yes
+    instance_tags:
+       web: apache
+    count: 1
+    vpc_subnet_id: "{{ Private1.subnet.id }}"
+    region: eu-west-1
+    assign_public_ip: yes
+  register: ec2
